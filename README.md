@@ -3,43 +3,7 @@ AtlasPulse — Real-Time Product Intelligence Pipeline
 
 A real-time data engineering pipeline that simulates Jira/Confluence-style product event tracking at scale — built end-to-end with Kafka, Spark Structured Streaming, Delta Lake, PostgreSQL, Airflow, and Grafana.
 
-> Built as a portfolio project to demonstrate production-grade streaming + batch data engineering patterns used at companies like Atlassian.
-
----
-
-## Architecture
-Python Producers (Jira/Confluence simulated events)
-│
-▼
-Apache Kafka (Docker)
-│
-▼
-PySpark Structured Streaming  ──────►  Bronze Delta Lake (AWS S3)
-│
-▼
-Silver Delta Lake (AWS S3)
-• Quarantine validation
-• Deduplication audit trail
-• Session windowing
-│
-PostgreSQL (team/user metadata)              │
-│                                    │
-▼                                    │
-Glue-style ETL ──────► S3 Staging ───────────┤
-▼
-Gold Delta Lake (AWS S3)
-TEAM_COST_SUMMARY
-│
-┌───────────────┼───────────────┐
-▼               ▼               ▼
-PostgreSQL      Great Expectations  Apache Airflow
-(for Grafana)   (8-check DQ suite)  (orchestration)
-│
-▼
-Grafana Dashboard
-(live, 4 panels)
-
----
+> Built as a portfolio project to demonstrate production-grade streaming + batch data engineering patterns .
 
 ## What this project demonstrates
 
@@ -155,18 +119,6 @@ Dashboards available at:
 - Kafka UI → `localhost:8080`
 - Grafana → `localhost:3000`
 - Airflow → `localhost:8081`
-
----
-
-## Project Structure
-atlaspulse/
-├── ingestion/          # Kafka producers + PostgreSQL seed script
-├── streaming/           # Spark Bronze (streaming) + Silver (batch) jobs
-├── glue_jobs/           # Glue-style ETL: PostgreSQL → S3
-├── gold/                 # Gold layer: TEAM_COST_SUMMARY
-├── quality/             # Data quality expectation suite
-├── airflow/dags/        # Pipeline orchestration DAG
-└── infra/                # Docker Compose for all services
 
 ---
 
