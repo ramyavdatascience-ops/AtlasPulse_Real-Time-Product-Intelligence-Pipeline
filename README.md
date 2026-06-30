@@ -8,7 +8,6 @@ A real-time data engineering pipeline that simulates Jira/Confluence-style produ
 ## What this project demonstrates
 
 | Layer | Technology | What it does |
-|---|---|---|
 | Ingestion | Apache Kafka (Docker) | Simulates real-time Jira/Confluence event streams |
 | Stream Processing | PySpark Structured Streaming | Exactly-once, checkpointed ingestion into Delta Lake |
 | Storage | Delta Lake on AWS S3 | ACID-compliant Bronze/Silver/Gold medallion architecture |
