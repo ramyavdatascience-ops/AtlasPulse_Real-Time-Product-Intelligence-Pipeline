@@ -1,126 +1,299 @@
-markdown# 
-AtlasPulse — Real-Time Product Intelligence Pipeline
+# AtlasPulse — Real-Time Product Intelligence Pipeline
 
-A real-time data engineering pipeline that simulates Jira/Confluence-style product event tracking at scale — built end-to-end with Kafka, Spark Structured Streaming, Delta Lake, PostgreSQL, Airflow, and Grafana.
+A production-grade, end-to-end real-time data engineering pipeline that simulates Jira and Confluence product event tracking at scale. Built using Apache Kafka, PySpark Structured Streaming, Delta Lake, PostgreSQL, Apache Airflow, Grafana, and AWS S3, this project demonstrates modern streaming, ETL, data quality, and analytics patterns used in enterprise environments.
 
-> Built as a portfolio project to demonstrate production-grade streaming + batch data engineering patterns .
-
-## What this project demonstrates
-
-| Layer | Technology | What it does |
-| Ingestion | Apache Kafka (Docker) | Simulates real-time Jira/Confluence event streams |
-| Stream Processing | PySpark Structured Streaming | Exactly-once, checkpointed ingestion into Delta Lake |
-| Storage | Delta Lake on AWS S3 | ACID-compliant Bronze/Silver/Gold medallion architecture |
-| Data Quality | Quarantine tables + Great Expectations | Bad rows routed, not dropped; 8-point automated DQ suite |
-| Feature Engineering | PySpark session windowing | Converts raw events into business-meaningful user sessions |
-| Relational Source | PostgreSQL | Operational metadata (teams, users, projects) — Aurora-equivalent |
-| ETL | Glue-style PySpark job | Extracts PostgreSQL → lands in S3 as Delta Lake staging |
-| Aggregation | Gold layer join | Streaming events + relational metadata → TEAM_COST_SUMMARY |
-| Orchestration | Apache Airflow (Docker) | DAG: Glue ETL → Silver → Gold, scheduled daily |
-| Visualization | Grafana | Live dashboard — spend by team, budget gauges, full summary table |
+> **Designed to showcase production-ready Data Engineering skills for roles at companies like Atlassian, Amazon, Microsoft, and other cloud-native organizations.**
 
 ---
 
-## Pipeline Layers Explained
+# 🏗️ Architecture
 
-**Bronze** — Raw events exactly as received from Kafka, written via streaming with checkpointing for exactly-once semantics. No transformations — this is the immutable source of truth.
-
-**Silver** — Cleaned and validated data. Invalid rows are routed to a separate quarantine Delta table (not dropped) with a logged reason for failure. Deduplication is measured and logged. Events are grouped into user sessions using Spark's `session_window` function.
-
-**Gold** — Business-ready aggregates. Joins streaming Silver events with relational team metadata (extracted from PostgreSQL via a Glue-style ETL job) to produce `TEAM_COST_SUMMARY` — showing AI spend, budget utilization, and cost tier per team.
-
----
-
-## Data Quality
-
-An 8-check automated suite validates the Silver layer before Gold can run:
-
-- `event_id` never null
-- `event_type` contains only known values
-- `response_time_ms` within realistic bounds
-- `cost_estimate_usd` never negative
-- `is_ai_event` never null
-- No duplicate `event_id`s post-deduplication
-- Minimum row count threshold
-- AI/non-AI cost consistency check
-
-Results are logged to a timestamped JSON report for audit trail. If any check fails, the pipeline halts before Gold runs — preventing bad data from reaching the dashboard.
-
-**Current result: 8/8 checks passed — 100% data quality score**
-
----
-
-## Dashboard
-
-Live Grafana dashboard connected to PostgreSQL, with 4 panels:
-
-- **AI Spend by Team** — bar chart ranking teams by cost
-- **Budget Used %** — gauge showing budget consumption per team
-- **Team Cost Summary** — full table view (events, cost, budget, status)
-- **Pipeline Totals** — stat panel for total events/calls/spend
-
----
-
-## Orchestration
-
-An Airflow DAG orchestrates the batch portion of the pipeline:
-glue_etl_aurora_to_s3  →  spark_silver_transform  →  spark_gold_team_cost_summary
-
-Scheduled to run `@daily`, with retry logic and task dependencies enforcing correct execution order. Streaming components (Kafka producers, Spark Bronze) run continuously as long-lived processes, separate from the daily batch DAG — matching how real production systems separate streaming and batch orchestration.
+```text
+Python Producers (Jira/Confluence Simulated Events)
+                     │
+                     ▼
+             Apache Kafka (Docker)
+                     │
+                     ▼
+     PySpark Structured Streaming
+                     │
+                     ▼
+        Bronze Delta Lake (AWS S3)
+                     │
+                     ▼
+        Silver Delta Lake (AWS S3)
+     • Data Validation
+     • Quarantine Tables
+     • Deduplication
+     • Session Windowing
+                     │
+         PostgreSQL (Metadata)
+                     │
+                     ▼
+        Glue-Style ETL (PySpark)
+                     │
+                     ▼
+         Staging Delta Lake (S3)
+                     │
+                     ▼
+        Gold Delta Lake (AWS S3)
+         TEAM_COST_SUMMARY
+                     │
+      ┌──────────────┼──────────────┐
+      ▼              ▼              ▼
+ PostgreSQL   Data Quality    Apache Airflow
+ (Grafana)     Validation     Orchestration
+      │
+      ▼
+ Grafana Dashboard
+```
 
 ---
 
-## Tech Stack
-Languages       Python, SQL, PySpark
-Streaming       Apache Kafka, Spark Structured Streaming
-Storage         Delta Lake, AWS S3
-Database        PostgreSQL
-Orchestration   Apache Airflow
-Data Quality    Custom PySpark expectation suite
-Visualization   Grafana
-Infrastructure  Docker, Docker Compose
-Cloud           AWS (S3, IAM)
+# 📌 Project Highlights
+
+- Real-time event ingestion using Apache Kafka
+- Streaming ETL with PySpark Structured Streaming
+- Bronze → Silver → Gold Medallion Architecture
+- ACID-compliant Delta Lake storage on AWS S3
+- Exactly-once processing using Spark checkpointing
+- Data quality validation with automated expectation checks
+- Quarantine tables for invalid records
+- Deduplication with audit metrics
+- Session window analytics using Spark
+- Glue-style ETL from PostgreSQL to S3
+- Business-ready Gold layer aggregations
+- Airflow DAG orchestration
+- Grafana dashboards for live monitoring
+- Dockerized local infrastructure
 
 ---
 
-## Local Setup
+# 🛠 Tech Stack
 
-All infrastructure runs via Docker — Kafka, PostgreSQL, Grafana, and Airflow.
+| Category | Technologies |
+|-----------|--------------|
+| Language | Python, SQL, PySpark |
+| Streaming | Apache Kafka, Spark Structured Streaming |
+| Storage | Delta Lake, AWS S3 |
+| Database | PostgreSQL |
+| ETL | PySpark (Glue-style) |
+| Orchestration | Apache Airflow |
+| Data Quality | Great Expectations / Custom Validation Suite |
+| Visualization | Grafana |
+| Infrastructure | Docker, Docker Compose |
+| Cloud | AWS (S3, IAM) |
+
+---
+
+# 📂 Medallion Architecture
+
+## 🥉 Bronze Layer
+
+- Raw events ingested directly from Kafka
+- Immutable source of truth
+- Checkpointed streaming
+- Exactly-once processing
+
+---
+
+## 🥈 Silver Layer
+
+Business-ready cleaned dataset featuring:
+
+- Data validation
+- Invalid row quarantine
+- Duplicate detection
+- Session windowing
+- Standardized schema
+
+---
+
+## 🥇 Gold Layer
+
+Aggregated business metrics combining streaming events with relational metadata.
+
+Main output:
+
+```
+TEAM_COST_SUMMARY
+```
+
+Includes:
+
+- Team AI Spend
+- Budget Utilization
+- Event Counts
+- AI Usage Statistics
+- Cost Tier Classification
+
+---
+
+# ✅ Data Quality
+
+The pipeline validates data before Gold processing.
+
+Implemented checks include:
+
+- Event ID is not null
+- Valid event types
+- Response time within acceptable limits
+- Non-negative AI cost
+- AI flag validation
+- Duplicate detection
+- Minimum row threshold
+- AI cost consistency validation
+
+If validation fails:
+
+- Gold pipeline stops
+- Invalid rows remain quarantined
+- Validation report is generated
+
+Current Status:
+
+```
+8 / 8 Checks Passed
+100% Data Quality Score
+```
+
+---
+
+# 📊 Dashboard
+
+Grafana visualizes live business metrics including:
+
+- AI Spend by Team
+- Budget Utilization Gauge
+- Team Cost Summary Table
+- Pipeline Totals
+- Total AI Cost
+- Total Events Processed
+
+---
+
+# 🔄 Pipeline Orchestration
+
+Apache Airflow orchestrates the batch workflow.
+
+```
+PostgreSQL
+      │
+      ▼
+Glue ETL
+      │
+      ▼
+Silver Transform
+      │
+      ▼
+Gold Aggregation
+      │
+      ▼
+Data Quality
+```
+
+Streaming services (Kafka + Spark) run continuously while Airflow schedules daily batch transformations.
+
+---
+
+# 🚀 Local Setup
+
+Start infrastructure:
 
 ```bash
-# 1. Start infrastructure
 cd infra
 docker-compose up -d
+```
 
-# 2. Install Python dependencies
+Install dependencies:
+
+```bash
 pip install -r infra/requirements.txt
+```
 
-# 3. Seed PostgreSQL with team/user metadata
+Seed PostgreSQL:
+
+```bash
 python ingestion/setup_postgres.py
+```
 
-# 4. Start event producers (separate terminals)
+Run Kafka producers:
+
+```bash
 python ingestion/producer_jira.py
 python ingestion/producer_confluence.py
+```
 
-# 5. Start Bronze streaming layer
+Start Bronze Streaming:
+
+```bash
 python streaming/spark_bronze.py
+```
 
-# 6. Run the batch pipeline
+Run Batch Pipeline:
+
+```bash
 python glue_jobs/aurora_to_s3.py
-python streaming/spark_silver.py
-python gold/team_cost_summary.py
 
-# 7. Run data quality checks
+python streaming/spark_silver.py
+
+python gold/team_cost_summary.py
+```
+
+Run Data Quality:
+
+```bash
 python quality/expectations_silver.py
 ```
 
-Dashboards available at:
-- Kafka UI → `localhost:8080`
-- Grafana → `localhost:3000`
-- Airflow → `localhost:8081`
+---
+
+# 📁 Project Structure
+
+```text
+atlaspulse/
+│
+├── airflow/
+│   └── dags/
+│
+├── glue_jobs/
+│
+├── gold/
+│
+├── ingestion/
+│
+├── infra/
+│
+├── quality/
+│
+├── streaming/
+│
+├── README.md
+│
+└── .gitignore
+```
 
 ---
 
-## Why this project
+# 🎯 Learning Outcomes
 
-This pipeline was built to demonstrate the architectural patterns used by companies running large-scale SaaS products — real-time event ingestion, medallion-architecture data lakes, relational-to-lake ETL, automated data quality gates, and orchestrated batch processing. It mirrors how a team like Atlassian's would track product usage (Jira/Confluence events) and translate that into business metrics like team-level AI cost attribution.
+This project demonstrates practical experience with:
+
+- Real-time Streaming Pipelines
+- Event-Driven Architecture
+- Delta Lake Medallion Design
+- Production ETL Patterns
+- Spark Structured Streaming
+- Cloud Data Lakes
+- Data Quality Engineering
+- Workflow Orchestration
+- Business Intelligence Pipelines
+- Docker-based Infrastructure
+
+---
+
+# 📖 Why AtlasPulse?
+
+Modern SaaS companies generate millions of product events every day. This project simulates how organizations like Atlassian transform those raw application events into reliable business insights using streaming data pipelines, data lakes, automated quality checks, and interactive dashboards.
+
+AtlasPulse showcases the end-to-end lifecycle of production-grade data engineering—from ingestion to analytics—following industry best practices used in large-scale cloud environments.
