@@ -1,0 +1,134 @@
+version: '3.8'
+
+services:
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: atlaspulse-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - atlaspulse-net
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: atlaspulse-kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT_INTERNAL:PLAINTEXT,PLAINTEXT_EXTERNAL:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT_INTERNAL://kafka:29092,PLAINTEXT_EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT_INTERNAL
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      - atlaspulse-net
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: atlaspulse-kafka-ui
+    depends_on:
+      - kafka
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: atlaspulse-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+    networks:
+      - atlaspulse-net
+  grafana:
+    image: grafana/grafana:latest
+    container_name: atlaspulse-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: atlaspulse123
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - postgres
+    networks:
+      - atlaspulse-net
+  airflow-init:
+    image: apache/airflow:2.8.1
+    container_name: atlaspulse-airflow-init
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:atlaspulse123@postgres/atlaspulse
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    command: >
+      bash -c "airflow db init &&
+               airflow users create
+               --username admin
+               --password atlaspulse123
+               --firstname Atlas
+               --lastname Pulse
+               --role Admin
+               --email admin@atlaspulse.com"
+    networks:
+      - atlaspulse-net
+
+  airflow-webserver:
+    image: apache/airflow:2.8.1
+    container_name: atlaspulse-webserver
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:atlaspulse123@postgres/atlaspulse
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__WEBSERVER__SECRET_KEY: atlaspulse_secret_key
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags
+      - ../:/opt/airflow/project
+    command: airflow webserver
+    networks:
+      - atlaspulse-net
+
+  airflow-scheduler:
+    image: apache/airflow:2.8.1
+    container_name: atlaspulse-scheduler
+    depends_on:
+      - postgres
+    environment:
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://admin:atlaspulse123@postgres/atlaspulse
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ../airflow/dags:/opt/airflow/dags
+      - ../:/opt/airflow/project
+    command: airflow scheduler
+    networks:
+      - atlaspulse-net
+  postgres:
+    image: postgres:15
+    container_name: atlaspulse-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: atlaspulse
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: atlaspulse123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - atlaspulse-net
+    
+networks:
+  atlaspulse-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  grafana_data:
